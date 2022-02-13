@@ -22,17 +22,27 @@ namespace TCP_Screenshare
                 input = Console.ReadLine();
             }
 
+            IPAddress address = null;
+            while (address == null)
+            {
+                Console.WriteLine("Enter IP:");
+                IPAddress.TryParse(Console.ReadLine(), out address);
+            }
+
+            Console.Clear();
+            Console.WriteLine("Starting...");
+
             if (input.Equals("S"))
-                Server();
+                Server(address);
             else
-                Client();
+                Client(address);
 
             Console.WriteLine("\nEnd.");
             Console.ReadLine();
         }
 
 
-        static void Server()
+        static void Server(IPAddress address)
         {
 
             //Rectangle captureRectangle = new Rectangle(0, 0, 1920, 1080);
@@ -49,71 +59,74 @@ namespace TCP_Screenshare
             Marshal.Copy(tempbitmap.Scan0, data, 0, data.Length);
             
 
-            Socket ogsocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            ogsocket.Bind(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 1234));
-            ogsocket.Listen(100);
-            Socket socket = ogsocket.Accept();
-
-
+            while(true)
             {
-                int number = captureBitmap.Width;
-                byte[] bytes = BitConverter.GetBytes(number);
-                if (BitConverter.IsLittleEndian)
-                    Array.Reverse(bytes);
-                socket.Send(bytes);
-            }
-
-            {
-                int number = captureBitmap.Height;
-                byte[] bytes = BitConverter.GetBytes(number);
-                if (BitConverter.IsLittleEndian)
-                    Array.Reverse(bytes);
-                socket.Send(bytes);
-            }
+                Socket ogsocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                ogsocket.Bind(new IPEndPoint(address, 1234));
+                ogsocket.Listen(100);
+                Socket socket = ogsocket.Accept();
 
 
-
-
-            try
-            {
-                System.Threading.Thread.Sleep(100);
-
-                while (true)
                 {
-                    //Console.WriteLine("> -------------------------------------");
-                    //Console.WriteLine("> Unlocking");
-                    captureBitmap.UnlockBits(tempbitmap);
-                    //Console.WriteLine("> Copying");
-                    captureGraphics.CopyFromScreen(captureRectangle.Left, captureRectangle.Top, 0, 0, captureRectangle.Size);
+                    int number = captureBitmap.Width;
+                    byte[] bytes = BitConverter.GetBytes(number);
+                    if (BitConverter.IsLittleEndian)
+                        Array.Reverse(bytes);
+                    socket.Send(bytes);
+                }
 
-                   // Console.WriteLine("> Locking");
-                    tempbitmap = captureBitmap.LockBits(captureRectangle, ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
-                    data = new byte[Math.Abs(tempbitmap.Stride * tempbitmap.Height)];
-                    Console.WriteLine("> Copying");
-                    Marshal.Copy(tempbitmap.Scan0, data, 0, data.Length);
+                {
+                    int number = captureBitmap.Height;
+                    byte[] bytes = BitConverter.GetBytes(number);
+                    if (BitConverter.IsLittleEndian)
+                        Array.Reverse(bytes);
+                    socket.Send(bytes);
+                }
 
+
+
+
+                try
+                {
+                    System.Threading.Thread.Sleep(100);
+
+                    while (true)
                     {
-                        //Console.WriteLine("> Sending Size");
-                        int number = data.Length;
-                        byte[] bytes = BitConverter.GetBytes(number);
-                        if (BitConverter.IsLittleEndian)
-                            Array.Reverse(bytes);
-                        socket.Send(bytes);
-                    }
+                        //Console.WriteLine("> -------------------------------------");
+                        //Console.WriteLine("> Unlocking");
+                        captureBitmap.UnlockBits(tempbitmap);
+                        //Console.WriteLine("> Copying");
+                        captureGraphics.CopyFromScreen(captureRectangle.Left, captureRectangle.Top, 0, 0, captureRectangle.Size);
 
-                    //Console.WriteLine("> Sending Image");
-                    socket.Send(data);
-                    //Console.WriteLine("> Sending Done");
-                    //System.Threading.Thread.Sleep(10);
+                        // Console.WriteLine("> Locking");
+                        tempbitmap = captureBitmap.LockBits(captureRectangle, ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
+                        data = new byte[Math.Abs(tempbitmap.Stride * tempbitmap.Height)];
+                        Console.WriteLine("> Copying");
+                        Marshal.Copy(tempbitmap.Scan0, data, 0, data.Length);
+
+                        {
+                            //Console.WriteLine("> Sending Size");
+                            int number = data.Length;
+                            byte[] bytes = BitConverter.GetBytes(number);
+                            if (BitConverter.IsLittleEndian)
+                                Array.Reverse(bytes);
+                            socket.Send(bytes);
+                        }
+
+                        //Console.WriteLine("> Sending Image");
+                        socket.Send(data);
+                        //Console.WriteLine("> Sending Done");
+                        //System.Threading.Thread.Sleep(10);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    //MessageBox.Show(ex.Message);
+                    //Console.WriteLine($"Error: {ex}");
                 }
             }
-            catch (Exception ex)
-            {
-                //MessageBox.Show(ex.Message);
-                //Console.WriteLine($"Error: {ex}");
-            }
         }
-        static void Client()
+        static void Client(IPAddress address)
         {
             IntPtr window = new IntPtr();
             IntPtr renderer = new IntPtr();
@@ -122,7 +135,7 @@ namespace TCP_Screenshare
             try
             {
                 Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                socket.Connect(new IPEndPoint(IPAddress.Parse("127.0.0.1").Address, 1234));
+                socket.Connect(new IPEndPoint(address, 1234));
 
                 //MessageBox.Show($"Getting Data...");
 
