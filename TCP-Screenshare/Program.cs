@@ -13,7 +13,6 @@ namespace TCP_Screenshare
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
 
             string input = "A";
 
@@ -44,7 +43,7 @@ namespace TCP_Screenshare
 
 
             captureGraphics.CopyFromScreen(captureRectangle.Left, captureRectangle.Top, 0, 0, captureRectangle.Size);
-            BitmapData tempbitmap = captureBitmap.LockBits(captureRectangle, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+            BitmapData tempbitmap = captureBitmap.LockBits(captureRectangle, ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
             byte[] data = new byte[Math.Abs(tempbitmap.Stride * tempbitmap.Height)];
             Marshal.Copy(tempbitmap.Scan0, data, 0, data.Length);
             
@@ -80,20 +79,20 @@ namespace TCP_Screenshare
 
                 while (true)
                 {
-                    Console.WriteLine("> -------------------------------------");
-                    Console.WriteLine("> Unlocking");
+                    //Console.WriteLine("> -------------------------------------");
+                    //Console.WriteLine("> Unlocking");
                     captureBitmap.UnlockBits(tempbitmap);
-                    Console.WriteLine("> Copying");
+                    //Console.WriteLine("> Copying");
                     captureGraphics.CopyFromScreen(captureRectangle.Left, captureRectangle.Top, 0, 0, captureRectangle.Size);
 
-                    Console.WriteLine("> Locking");
-                    tempbitmap = captureBitmap.LockBits(captureRectangle, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                   // Console.WriteLine("> Locking");
+                    tempbitmap = captureBitmap.LockBits(captureRectangle, ImageLockMode.ReadOnly, PixelFormat.Format32bppRgb);
                     data = new byte[Math.Abs(tempbitmap.Stride * tempbitmap.Height)];
                     Console.WriteLine("> Copying");
                     Marshal.Copy(tempbitmap.Scan0, data, 0, data.Length);
 
                     {
-                        Console.WriteLine("> Sending Size");
+                        //Console.WriteLine("> Sending Size");
                         int number = data.Length;
                         byte[] bytes = BitConverter.GetBytes(number);
                         if (BitConverter.IsLittleEndian)
@@ -101,16 +100,16 @@ namespace TCP_Screenshare
                         socket.Send(bytes);
                     }
 
-                    Console.WriteLine("> Sending Image");
+                    //Console.WriteLine("> Sending Image");
                     socket.Send(data);
-                    Console.WriteLine("> Sending Done");
-                    System.Threading.Thread.Sleep(10);
+                    //Console.WriteLine("> Sending Done");
+                    //System.Threading.Thread.Sleep(10);
                 }
             }
             catch (Exception ex)
             {
                 //MessageBox.Show(ex.Message);
-                Console.WriteLine($"Error: {ex}");
+                //Console.WriteLine($"Error: {ex}");
             }
         }
         static void Client()
@@ -148,13 +147,34 @@ namespace TCP_Screenshare
 
 
                 SDL.SDL_Init(SDL.SDL_INIT_VIDEO);
-                window = SDL.SDL_CreateWindow("Screenshare", 20, 20, width, height, SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE);
+                window = SDL.SDL_CreateWindow("Screenshare Window", 20, 20, width, height, SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE);
                 renderer = SDL.SDL_CreateRenderer(window, 0, SDL.SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
                 //SDL.SDL_CreateWindowAndRenderer(width, height, SDL.SDL_WindowFlags.SDL_WINDOW_RESIZABLE, out window, out renderer);
                 SDL.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
                 SDL.SDL_RenderClear(renderer);
-                SDL.SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
                 SDL.SDL_RenderPresent(renderer);
+
+                SDL.SDL_Rect temprec = new SDL.SDL_Rect() { x = 0, y = 0, h = height, w = width };
+
+                float ratio = -1;
+                {
+                    SDL.SDL_GetWindowSize(window, out int w, out int h);
+
+                    float newratio = (float)w / width;
+                    if ((float)h / height < newratio)
+                        newratio = (float)h / height;
+
+                    //temprec = new SDL.SDL_Rect() { x = (w-width - w) / 2, y = (height - h) / 2, h = height, w = width };
+
+                   //if ((w - width) / 2 >= 0)
+                   //     temprec.x = (w - width) / 2;
+                   //if ((h - height) / 2 >= 0)
+                   //     temprec.y = (h - height) / 2;
+
+                    ratio = newratio;
+                    SDL.SDL_RenderClear(renderer);
+                    SDL.SDL_RenderSetScale(renderer, newratio, newratio);
+                }
 
                 System.Threading.Thread.Sleep(100);
 
@@ -167,22 +187,62 @@ namespace TCP_Screenshare
                 {
                     IntPtr pointer = handle.AddrOfPinnedObject();
 
-                    SDL.SDL_Rect temprec = new SDL.SDL_Rect() { x = 0, y = 0, h = height, w = width };
+                   
 
                     SDL.SDL_UpdateTexture(framebuffer, ref temprec, pointer, width * 4);
 
-                    while (true)
+                    bool exit = false;
+                    while (!exit)
                     {
-                        Console.WriteLine("> -------------------------");
+                        //Console.WriteLine("> -------------------------");
                         SDL.SDL_Event @event;
-                        Console.WriteLine("> Poll Events");
+                        //Console.WriteLine("> Poll Events");
                         while (SDL.SDL_PollEvent(out @event) > 0)
                         {
-                            /* handle your event here */
+                            if (@event.type == SDL.SDL_EventType.SDL_QUIT)
+                            {
+                                exit = true;
+                                Console.WriteLine("Exiting Screenshare");
+                                socket.Close();
+                                break;
+                            }
                         }
+
+                        {
+                            SDL.SDL_GetWindowSize(window, out int w, out int h);
+
+                            float newratio = (float)w / width;
+
+                            if ((float)h / height < newratio)
+                                newratio = (float)h / height;
+
+                            if (newratio != ratio)
+                            {
+                                temprec.x = 0;
+                                temprec.y = 0;
+
+                                int xoff = (int)((w - width * newratio) / 2);
+                                int yoff = (int)((h - height * newratio) / 2);
+                                if (xoff >= 0)
+                                    temprec.x = xoff;
+                                if (yoff >= 0)
+                                    temprec.y = yoff;
+
+                                temprec.x = 20;
+                                temprec.y = 10;
+
+                                Console.WriteLine($"xoff: {xoff}, yoff: {yoff}");
+
+
+                                ratio = newratio;
+                                SDL.SDL_RenderClear(renderer);
+                                SDL.SDL_RenderSetScale(renderer, newratio, newratio);
+                            }
+                        }
+
                         int size;
                         {
-                            Console.WriteLine("> Get Size");
+                            //Console.WriteLine("> Get Size");
                             byte[] aaa = new byte[4];
                             int counter = 0;
                             while (counter < 4)
@@ -192,12 +252,12 @@ namespace TCP_Screenshare
                         byte[] image_arr = new byte[size];
                         {
                             //MessageBox.Show($"Getting Image Data...");
-                            Console.WriteLine("> Getting Image Data");
+                            //Console.WriteLine("> Getting Image Data");
                             int counter = 0;
                             while (counter < size)
                                 counter += socket.Receive(image_arr, counter, size - counter, SocketFlags.None);
 
-                            Console.WriteLine("> Done");
+                            //Console.WriteLine("> Done");
                             // Decompress it
                             //MessageBox.Show($"Getting Image Data 2...");
                             //image_arr = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(image_arr);
@@ -206,39 +266,34 @@ namespace TCP_Screenshare
                         }
 
                         {
-                            Console.WriteLine("> Writing Image");
+                            //Console.WriteLine("> Writing Image");
                             //MessageBox.Show($"Setting Image...");
                             int index = 0;
-                            for (int y = 0; y < height; y++)
+
+                            //Console.WriteLine("> Done");
+
                             {
-                                for (int x = 0; x < width; x++)
+                                var Asize = image_arr.Length / 4;
+                                
+                                for (var Aindex = 0; Aindex < Asize; Aindex++)
                                 {
-                                    byte[] rgb = new byte[4];
-                                    rgb[3] = image_arr[index]; index++;
-                                    rgb[2] = image_arr[index]; index++;
-                                    rgb[1] = image_arr[index]; index++;
-
-                                    //SDL.SDL_SetRenderDrawColor(renderer, rgb[0], rgb[1], rgb[2], 0);
-                                    //SDL.SDL_RenderDrawPoint(renderer, x, y);
-
-                                    int size_temp = BinaryPrimitives.ReadInt32BigEndian(rgb);
-                                    pixels[(index / 3) - 1] = size_temp;
+                                    pixels[Aindex] = BitConverter.ToInt32(image_arr, Aindex * 4);
                                 }
                             }
-                            Console.WriteLine("> Done");
 
-                            //SDL.SDL_SetRenderDrawColor(renderer, 0, 255, 100, 0);
-                            //SDL.SDL_RenderDrawPoint(renderer, 10, 10);
                             SDL.SDL_UpdateTexture(framebuffer, ref temprec, pointer, width * 4);
                             SDL.SDL_RenderCopy(renderer, framebuffer, ref temprec, ref temprec);
                             SDL.SDL_RenderPresent(renderer);
+
+
+                            
 
                             //MessageBox.Show($"Setting Image 2...");
 
 
                         }
 
-                        Console.WriteLine("> Drew Image");
+                        //Console.WriteLine("> Drew Image");
 
                         //System.Threading.Thread.Sleep(100);
                     }
