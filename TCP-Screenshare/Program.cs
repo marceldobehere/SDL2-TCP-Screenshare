@@ -22,27 +22,39 @@ namespace TCP_Screenshare
                 input = Console.ReadLine();
             }
 
-            IPAddress address = null;
-            while (address == null)
+            IPAddress[] ipaddr = new IPAddress[0];
+            int port = 1234;
+            while (ipaddr.Length == 0)
             {
                 Console.WriteLine("Enter IP:");
-                IPAddress.TryParse(Console.ReadLine(), out address);
+                try
+                {
+                    string[] temp = Console.ReadLine().Split(':');
+
+                    ipaddr = Dns.GetHostAddresses(temp[0]);
+                    if (temp.Length > 0)
+                        port = int.Parse(temp[1]);
+                }
+                catch
+                {
+
+                }
             }
 
             Console.Clear();
             Console.WriteLine("Starting...");
 
             if (input.Equals("S"))
-                Server(address);
+                Server(ipaddr[0], port);
             else
-                Client(address);
+                Client(ipaddr[0], port);
 
             Console.WriteLine("\nEnd.");
             Console.ReadLine();
         }
 
 
-        static void Server(IPAddress address)
+        static void Server(IPAddress address, int port)
         {
 
             //Rectangle captureRectangle = new Rectangle(0, 0, 1920, 1080);
@@ -62,7 +74,7 @@ namespace TCP_Screenshare
             while(true)
             {
                 Socket ogsocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                ogsocket.Bind(new IPEndPoint(address, 1234));
+                ogsocket.Bind(new IPEndPoint(address, port));
                 ogsocket.Listen(100);
                 Socket socket = ogsocket.Accept();
 
@@ -126,7 +138,7 @@ namespace TCP_Screenshare
                 }
             }
         }
-        static void Client(IPAddress address)
+        static void Client(IPAddress address, int port)
         {
             IntPtr window = new IntPtr();
             IntPtr renderer = new IntPtr();
@@ -135,7 +147,7 @@ namespace TCP_Screenshare
             try
             {
                 Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                socket.Connect(new IPEndPoint(address, 1234));
+                socket.Connect(new IPEndPoint(address, port));
 
                 //MessageBox.Show($"Getting Data...");
 
