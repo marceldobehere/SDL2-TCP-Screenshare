@@ -158,67 +158,98 @@ namespace TCP_Screenshare
 
                 System.Threading.Thread.Sleep(100);
 
-                while (true)
+                IntPtr framebuffer = SDL.SDL_CreateTexture(renderer, SDL.SDL_PIXELFORMAT_ARGB8888, (int)SDL.SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, width, height);
+
+                int[] pixels = new int[width * height];
+
+                GCHandle handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+                try
                 {
-                    Console.WriteLine("> -------------------------");
-                    SDL.SDL_Event @event;
-                    Console.WriteLine("> Poll Events");
-                    while (SDL.SDL_PollEvent(out @event) > 0) 
-                    {
-                            /* handle your event here */
-                    }
-                    int size;
-                    {
-                        Console.WriteLine("> Get Size");
-                        byte[] aaa = new byte[4];
-                        int counter = 0;
-                        while (counter < 4)
-                            counter += socket.Receive(aaa, counter, 4 - counter, SocketFlags.None);
-                        size = BinaryPrimitives.ReadInt32BigEndian(aaa);
-                    }
-                    byte[] image_arr = new byte[size];
-                    {
-                        //MessageBox.Show($"Getting Image Data...");
-                        Console.WriteLine("> Getting Image Data");
-                        int counter = 0;
-                        while (counter < size)
-                            counter += socket.Receive(image_arr, counter, size - counter, SocketFlags.None);
+                    IntPtr pointer = handle.AddrOfPinnedObject();
 
-                        Console.WriteLine("> Done");
-                        // Decompress it
-                        //MessageBox.Show($"Getting Image Data 2...");
-                        //image_arr = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(image_arr);
+                    SDL.SDL_Rect temprec = new SDL.SDL_Rect() { x = 0, y = 0, h = height, w = width };
 
-                        //MessageBox.Show($"Getting Image Data 3...");
-                    }
+                    SDL.SDL_UpdateTexture(framebuffer, ref temprec, pointer, width * 4);
 
+                    while (true)
                     {
-                        Console.WriteLine("> Writing Image");
-                        //MessageBox.Show($"Setting Image...");
-                        int index = 0;
-                        for (int y = 0; y < height; y++)
+                        Console.WriteLine("> -------------------------");
+                        SDL.SDL_Event @event;
+                        Console.WriteLine("> Poll Events");
+                        while (SDL.SDL_PollEvent(out @event) > 0)
                         {
-                            for (int x = 0; x < width; x++)
-                            {
-                                byte[] rgb = new byte[3];
-                                rgb[2] = image_arr[index]; index++;
-                                rgb[1] = image_arr[index]; index++;
-                                rgb[0] = image_arr[index]; index++;
-
-                                SDL.SDL_SetRenderDrawColor(renderer, rgb[0], rgb[1], rgb[2], 0);
-                                SDL.SDL_RenderDrawPoint(renderer, x, y);
-                            }
+                            /* handle your event here */
                         }
-                        Console.WriteLine("> Done");
-                        //SDL.SDL_RenderPresent(renderer);
+                        int size;
+                        {
+                            Console.WriteLine("> Get Size");
+                            byte[] aaa = new byte[4];
+                            int counter = 0;
+                            while (counter < 4)
+                                counter += socket.Receive(aaa, counter, 4 - counter, SocketFlags.None);
+                            size = BinaryPrimitives.ReadInt32BigEndian(aaa);
+                        }
+                        byte[] image_arr = new byte[size];
+                        {
+                            //MessageBox.Show($"Getting Image Data...");
+                            Console.WriteLine("> Getting Image Data");
+                            int counter = 0;
+                            while (counter < size)
+                                counter += socket.Receive(image_arr, counter, size - counter, SocketFlags.None);
 
-                        //MessageBox.Show($"Setting Image 2...");
+                            Console.WriteLine("> Done");
+                            // Decompress it
+                            //MessageBox.Show($"Getting Image Data 2...");
+                            //image_arr = SevenZip.Compression.LZMA.SevenZipHelper.Decompress(image_arr);
+
+                            //MessageBox.Show($"Getting Image Data 3...");
+                        }
+
+                        {
+                            Console.WriteLine("> Writing Image");
+                            //MessageBox.Show($"Setting Image...");
+                            int index = 0;
+                            for (int y = 0; y < height; y++)
+                            {
+                                for (int x = 0; x < width; x++)
+                                {
+                                    byte[] rgb = new byte[4];
+                                    rgb[3] = image_arr[index]; index++;
+                                    rgb[2] = image_arr[index]; index++;
+                                    rgb[1] = image_arr[index]; index++;
+
+                                    //SDL.SDL_SetRenderDrawColor(renderer, rgb[0], rgb[1], rgb[2], 0);
+                                    //SDL.SDL_RenderDrawPoint(renderer, x, y);
+
+                                    int size_temp = BinaryPrimitives.ReadInt32BigEndian(rgb);
+                                    pixels[(index / 3) - 1] = size_temp;
+                                }
+                            }
+                            Console.WriteLine("> Done");
+
+                            //SDL.SDL_SetRenderDrawColor(renderer, 0, 255, 100, 0);
+                            //SDL.SDL_RenderDrawPoint(renderer, 10, 10);
+                            SDL.SDL_UpdateTexture(framebuffer, ref temprec, pointer, width * 4);
+                            SDL.SDL_RenderCopy(renderer, framebuffer, ref temprec, ref temprec);
+                            SDL.SDL_RenderPresent(renderer);
+
+                            //MessageBox.Show($"Setting Image 2...");
+
+
+                        }
+
+                        Console.WriteLine("> Drew Image");
+
+                        //System.Threading.Thread.Sleep(100);
                     }
-
-                    Console.WriteLine("> Drew Image");
-
                 }
-
+                finally
+                {
+                    if (handle.IsAllocated)
+                    {
+                        handle.Free();
+                    }
+                }
 
             }
             catch (Exception ex)
