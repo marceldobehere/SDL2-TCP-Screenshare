@@ -35,6 +35,7 @@ namespace TCP_Screenshare
         static void Server()
         {
 
+            //Rectangle captureRectangle = new Rectangle(0, 0, 1920, 1080);
             Rectangle captureRectangle = new Rectangle(0, 0, 1920, 1080);
             Bitmap captureBitmap = new Bitmap(captureRectangle.Width, captureRectangle.Height, PixelFormat.Format32bppArgb);
             Graphics captureGraphics = Graphics.FromImage(captureBitmap);
@@ -155,6 +156,7 @@ namespace TCP_Screenshare
                 SDL.SDL_RenderPresent(renderer);
 
                 SDL.SDL_Rect temprec = new SDL.SDL_Rect() { x = 0, y = 0, h = height, w = width };
+                SDL.SDL_Rect temprec2 = new SDL.SDL_Rect() { x = 0, y = 0, h = height, w = width };
 
                 float ratio = -1;
                 {
@@ -188,7 +190,6 @@ namespace TCP_Screenshare
                     IntPtr pointer = handle.AddrOfPinnedObject();
 
                    
-
                     SDL.SDL_UpdateTexture(framebuffer, ref temprec, pointer, width * 4);
 
                     bool exit = false;
@@ -216,24 +217,29 @@ namespace TCP_Screenshare
                             if ((float)h / height < newratio)
                                 newratio = (float)h / height;
 
+
+                            int xoff = (int)((w - width * newratio) / 2);
+                            int yoff = (int)((h - height * newratio) / 2);
+                            if (xoff < 0)
+                                xoff = 0;
+                            if (yoff < 0)
+                                yoff = 0;
+
+                            temprec2.x = xoff;
+                            temprec2.y = yoff;
+
+
+                            //Console.WriteLine($"OG Window:   x: {width}, y: {height}");
+                            //Console.WriteLine($"NEW Window:  x: {w}, y: {h}");
+                            //Console.WriteLine($"ratio: {newratio}");
+                            //Console.WriteLine($"Scaled Window:  x: {(width * newratio)}, y: {(height * newratio)}");
+                            //Console.WriteLine($"Window + space: x: {(int)(width * newratio) + 2*xoff}, y: {(int)(height * newratio) + 2 * yoff}");
+                            //Console.WriteLine($"xoff: {xoff}, yoff: {yoff}");
+                            //Console.WriteLine($"recx: {temprec2.x}, recy: {temprec2.y}");
+
+
                             if (newratio != ratio)
                             {
-                                temprec.x = 0;
-                                temprec.y = 0;
-
-                                int xoff = (int)((w - width * newratio) / 2);
-                                int yoff = (int)((h - height * newratio) / 2);
-                                if (xoff >= 0)
-                                    temprec.x = xoff;
-                                if (yoff >= 0)
-                                    temprec.y = yoff;
-
-                                temprec.x = 20;
-                                temprec.y = 10;
-
-                                Console.WriteLine($"xoff: {xoff}, yoff: {yoff}");
-
-
                                 ratio = newratio;
                                 SDL.SDL_RenderClear(renderer);
                                 SDL.SDL_RenderSetScale(renderer, newratio, newratio);
@@ -282,7 +288,9 @@ namespace TCP_Screenshare
                             }
 
                             SDL.SDL_UpdateTexture(framebuffer, ref temprec, pointer, width * 4);
-                            SDL.SDL_RenderCopy(renderer, framebuffer, ref temprec, ref temprec);
+
+
+                            SDL.SDL_RenderCopy(renderer, framebuffer, ref temprec, ref temprec2);
                             SDL.SDL_RenderPresent(renderer);
 
 
