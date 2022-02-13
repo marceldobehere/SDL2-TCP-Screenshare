@@ -218,8 +218,8 @@ namespace TCP_Screenshare
                                 newratio = (float)h / height;
 
 
-                            int xoff = (int)((w - width * newratio) / 2);
-                            int yoff = (int)((h - height * newratio) / 2);
+                            int xoff = (int)(((w - width * newratio) / 2) / newratio);
+                            int yoff = (int)(((h - height * newratio) / 2) / newratio);
                             if (xoff < 0)
                                 xoff = 0;
                             if (yoff < 0)
@@ -228,12 +228,15 @@ namespace TCP_Screenshare
                             temprec2.x = xoff;
                             temprec2.y = yoff;
 
-
+                            //Console.WriteLine();
+                            //Console.WriteLine();
+                            //Console.WriteLine();
+                            //Console.WriteLine();
                             //Console.WriteLine($"OG Window:   x: {width}, y: {height}");
                             //Console.WriteLine($"NEW Window:  x: {w}, y: {h}");
                             //Console.WriteLine($"ratio: {newratio}");
                             //Console.WriteLine($"Scaled Window:  x: {(width * newratio)}, y: {(height * newratio)}");
-                            //Console.WriteLine($"Window + space: x: {(int)(width * newratio) + 2*xoff}, y: {(int)(height * newratio) + 2 * yoff}");
+                            //Console.WriteLine($"Window + space: x: {(int)(width * newratio) + 2 * xoff}, y: {(int)(height * newratio) + 2 * yoff}");
                             //Console.WriteLine($"xoff: {xoff}, yoff: {yoff}");
                             //Console.WriteLine($"recx: {temprec2.x}, recy: {temprec2.y}");
 
